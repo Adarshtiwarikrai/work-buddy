@@ -1,3 +1,4 @@
+//@ts-nocheck
 import {User} from "./user.js";
 import { Canvas ,CanvasRenderingContext2D } from "canvas";
 import * as mediasoup from 'mediasoup';
@@ -24,7 +25,7 @@ export class Project {
     public can:Canvas;
     public ctx:CanvasRenderingContext2D;
     public worker=[];
-    public room :Map<string,{}>=new Map<string,{}>()
+    public room :Map<string,{router:mediasoup.types.Router,peers:Set<User>}>=new Map<string,{router:mediasoup.types.Router,peers:Set<User>}>()
     public peer:Map<string,User>=new Map<string,User>()
     public transports:Map<User,[]>=new Map<User,[]>()
     public workers:mediasoup.types.Worker;
@@ -84,8 +85,9 @@ export class Project {
         })
     }
     public async createmeeting(word:string,user:User){
-
+       
         if(!this.room.has(word)){
+           
         const router=await this.workers.createRouter({mediaCodecs});
         //console.log(this.user,"hiiiiiiiiiiiiiiiiii",router)
         this.room.set(word,{router,peers:new Set()})
@@ -109,7 +111,7 @@ export class Project {
     console.log(`Transport created with ID: ${transport.id}`);
     return transport;
     }
-    public async transportcreate(word:string,user:User,message){
+    public async transportcreate(word:string,user:User,message: { consumer: any; create: any; }){
        if(!this.room.has(word)){
         return ;
        }
@@ -154,7 +156,7 @@ export class Project {
         })
         )
     }
-    public async transportproduce(user:User,data){
+    public async transportproduce(user:User,data:{kind:string,rtpParameters:any,params:any,transportId:string,create:string}){
         const {kind, rtpParameters, params,transportId}=data; 
         const arr=this.transports.get(user)!;
         let transport

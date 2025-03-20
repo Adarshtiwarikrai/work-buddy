@@ -7,7 +7,7 @@ export const UseSocket = () => {
   useEffect(() => {
     // Create WebSocket connection only once
     if (!socketRef.current) {
-      const ws = new WebSocket('ws://localhost:8080');
+      const ws = new WebSocket(' https://top-script-448817-a1.uc.r.appspot.com');
 
       ws.onopen = () => {
         console.log('connected');

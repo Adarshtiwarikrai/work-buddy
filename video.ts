@@ -1,3 +1,4 @@
+import * as mediasoup from 'mediasoup'
 const mediaCodecs = [
     {
         kind: "audio",
@@ -17,11 +18,10 @@ const mediaCodecs = [
     },
 ];
 class router{
-    this.router;
+    public router:Number;
+    public worker:Number;
     constructor(){
-        this.Worker;
-        constructor(){
-            this.worker
-        }
+       this.router=0;
+       this.worker=0;
     }
 }

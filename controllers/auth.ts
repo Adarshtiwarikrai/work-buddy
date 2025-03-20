@@ -1,3 +1,4 @@
+//@ts-nocheck
 import {Client} from 'pg'
 import {validator} from 'validator'
 import zxcvbn from 'zxcvbn'

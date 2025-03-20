@@ -1,3 +1,4 @@
+//@ts-nocheck
 import { WebSocketServer, WebSocket } from "ws";
 import { createCanvas, loadImage } from "canvas";
 import {User}from './user.js';

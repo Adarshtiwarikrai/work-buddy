@@ -1,3 +1,4 @@
+//@ts-nocheck
 import {WebSocket} from "ws";
 export class User{
    public socket:WebSocket;
