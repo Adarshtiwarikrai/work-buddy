@@ -242,3 +242,6 @@ export class Project {
     }
     
 }
+//gcloud projects add-iam-policy-binding top-script-448817-a1    --member="serviceAccount:956648231412-compute@developer.gserviceaccount.com"  --role="roles/editor" 
+//gcloud compute instances set-service-account work-buddy2   --zone=us-central1-c  --service-account=956648231412-compute@developer.gserviceaccount.com --scopes=https://www.googleapis.com/auth/cloud-platform
+//gcloud compute firewall-rules create allow-websockets  --allow=tcp:8080  --source-ranges=0.0.0.0/0  --target-tags=websocket-server

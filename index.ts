@@ -4,7 +4,7 @@ import { createCanvas, loadImage } from "canvas";
 import {User}from './user.js';
 import { Project } from "./project";
 import * as mediasoup from 'mediasoup'
-const wss = new WebSocketServer({ port: 8080 });
+const wss = new WebSocketServer({ port: 8080,host: '0.0.0.0' });
 
 let worker
 let project
