@@ -1,6 +1,8 @@
-runtime: nodejs20
-env: standard
-instance_class: F1
-handlers:
-  - url: /.*
-    script: auto
+version: '3.8'
+services:
+  
+  backend:
+    image: node:20
+    ports:
+      - "8080:8080"
+

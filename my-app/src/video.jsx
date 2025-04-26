@@ -1,6 +1,7 @@
 import { UseSocket } from "./usestate";
 import React, { useEffect, useRef, useState ,useMemo} from "react";
 import { Device } from "mediasoup-client";
+
 const Video=React.memo(({pass})=>{
     const { socket, sendmessage, message } = UseSocket();
     const [transport,setransport]=useState();
@@ -12,114 +13,130 @@ const Video=React.memo(({pass})=>{
     const ownref=useRef();
     const getvideo=async ()=>{
        const video= await navigator.mediaDevices.getUserMedia({ video: true })
-       return video;
+       return {video};
+    }
+    const getscreen=async()=>{
+      console.log("screen")
+      const screen=await navigator.mediaDevices.getDisplayMedia({video:true})
+      return {screen}
     }
     useEffect(()=>{
         if(!socket)
             return ;
-       
+
         if(pass.type=='createroom'){
             console.log(pass)
             sendmessage(pass)
         }
         if(pass.type=='joinroom'){
-          
+
             sendmessage(pass)
-            
+
         }
     },[pass,socket])
-    useEffect(()=>{
-        const handletransport=async()=>{
-        if(!message)
-            return ;
-       if(message.type=='roomcreated'||message.type=='roomjoined'){
-           const dev=new Device();
-           await dev.load({ routerRtpCapabilities: message.rtpCapabilities })
-           setdevice(dev)
-           console.log('asdfasdfasdfsdfasdfasdfsadfa this is the we are looking for now ',pass.create)
-           sendmessage({type:'webrtctransport',consumer:'sender',create:pass.create})
-           sendmessage({type:'webrtctransport',consumer:'recevier',create:pass.create})
-       }
-       if(message.type=='transportcreated'){
-         if(message.consumer=='sender'){
-            console.log(message)
-            const producertransport=device.createSendTransport(message.params);
-            producertransport.on('connect',async ({dtlsParameters},callback,reject)=>{
-                sendmessage({type:'connect-transport',consumer:message.consumer,transportId:producertransport.id,dtlsParameters:dtlsParameters,params:message.params,create:message.create})
-                callback()
-            })
-            producertransport.on('produce',async ({kind,rtpParameters},callback,reject)=>{
-                sendmessage({type:'produce-transport',consumer:message.consumer,transportId:producertransport.id,kind:kind,rtpParameters:rtpParameters,params:message.params,create:message.create})
-                callback({id:message.id})
-            })
-            
-            const tracks=await getvideo()
-            
-            tracks.getTracks().forEach(async (track)=>{
-              await    producertransport.produce({track})
-            })
-            
+    // This function handles new messages when they arrive
+    const handleNewMessage = async (msg) => {
+        if(!msg)
+            return;
 
-         }
-         else if(message.consumer=='recevier'){
-                                           //createRecvTransport(message.params)
-            const consumertransport=device.createRecvTransport(message.params)
-            consumertransport.on('connect',async ({dtlsParameters},callback,reject)=>{
-                sendmessage({type:'connect-transport',consumer:message.consumer,transportId:consumertransport.id,dtlsParameters:dtlsParameters,params:message.params,create:message.create})
-                callback()
+        console.log('New message received:', msg.type);
+
+        if(msg.type=='roomcreated'||msg.type=='roomjoined'){
+            const dev=new Device();
+            await dev.load({ routerRtpCapabilities: msg.rtpCapabilities })
+            setdevice(dev)
+            console.log('Room created/joined, setting up transports for:', pass.create)
+            sendmessage({type:'webrtctransport',consumer:'sender',create:pass.create})
+            sendmessage({type:'webrtctransport',consumer:'recevier',create:pass.create})
+        }
+        if(msg.type=='transportcreated'){
+            if(msg.consumer=='sender'){
+                console.log('Sender transport created')
+                const producertransport=device.createSendTransport(msg.params);
+                producertransport.on('connect',async ({dtlsParameters},callback,reject)=>{
+                    sendmessage({type:'connect-transport',consumer:msg.consumer,transportId:producertransport.id,dtlsParameters:dtlsParameters,params:msg.params,create:msg.create})
+                    callback()
+                })
+                producertransport.on('produce',async ({kind,rtpParameters},callback,reject)=>{
+                    sendmessage({type:'produce-transport',consumer:msg.consumer,transportId:producertransport.id,kind:kind,rtpParameters:rtpParameters,params:msg.params,create:msg.create})
+                    callback({id:msg.id})
+                })
+                const {video}=await getvideo()
+                video.getTracks().forEach(async (track)=>{
+                    await producertransport.produce({track})
+                })
+                if(pass.screen){
+                    console.log("Setting up screen sharing")
+                    const {screen}=await getscreen()
+                    screen.getTracks().forEach(async (track)=>{
+                        await producertransport.produce({track})
+                    })
+                }
+            }
+            else if(msg.consumer=='recevier'){
+                console.log('Receiver transport created')
+                const consumertransport=device.createRecvTransport(msg.params)
+                consumertransport.on('connect',async ({dtlsParameters},callback,reject)=>{
+                    sendmessage({type:'connect-transport',consumer:msg.consumer,transportId:consumertransport.id,dtlsParameters:dtlsParameters,params:msg.params,create:msg.create})
+                    callback()
+                })
+                transportref.current.push({
+                    id:consumertransport.id,
+                    transport:consumertransport,
+                    consumer:msg.consumer
+                })
+                console.log("Setting up consumer transport")
+                sendmessage({
+                    type:'consume',
+                    rtpParameters:device.rtpCapabilities,
+                    transportId:consumertransport.id,
+                    paused:true,
+                    create:msg.create
+                })
+            }
+        }
+        if(msg.type=='consumercreated'){
+            console.log("Consumer created, setting up video stream")
+            const transportdata=transportref.current.find((transport)=>transport.id===msg.transportId)
+            const recvtransport=await transportdata.transport.consume({
+                id:msg.id,
+                producerId:msg.producerId,
+                kind:msg.kind,
+                rtpParameters:msg.rtpParameters,
+                transportId:msg.transportId,
             })
-            transportref.current.push({
-                id:consumertransport.id,
-                transport:consumertransport,
-                consumer:message.consumer
-            })
-            console.log("aasdfasdfasdfasdfasdfasdf")
-              sendmessage({
+            const stream=new MediaStream()
+            stream.addTrack(recvtransport.track)
+            console.log('Stream tracks:', stream.getTracks())
+            console.log('Producer ID:', msg.producerId)
+            if(videoref.current.has(msg.producerId))
+                console.log("Producer ID already exists in video references")
+            videoref.current.set(msg.producerId,stream)
+            setwatch(prevmap=>new Map(prevmap.set(msg.producerId,stream)))
+            setword(word+1)
+            console.log('Updated video references:', videoref.current)
+        }
+        if(msg.type=='newproducer'){
+            console.log('New producer detected:', msg)
+            const t=transportref.current[0];
+            console.log('Using transport:', t)
+            sendmessage({
                 type:'consume',
                 rtpParameters:device.rtpCapabilities,
-                transportId:consumertransport.id,
-                paused:true,
-                create:message.create
-              })
-         }
-       }
-       if(message.type=='consumercreated'){
-        console.log("sushma")
-           const transportdata=transportref.current.find((transport)=>transport.id===message.transportId)
-          const recvtransport=await transportdata.transport.consume({
-            id:message.id,
-            producerId:message.producerId,
-            
-            kind:message.kind,
-            rtpParameters:message.rtpParameters,
-            transportId:message.transportId,
-          })
-          const stream=new MediaStream()
-          stream.addTrack(recvtransport.track)
-          console.log(stream.getTracks())
-          console.log(message.producerId,stream.getTracks())
-          if(videoref.current.has(message.producerId))
-            console.log("asjldkffffffffffffffffffffffffffffffffffakdjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjj")
-          videoref.current.set(message.producerId,stream)
-          setwatch(prevmap=>new Map(prevmap.set(message.producerId,stream)))
-          setword(word+1)
-          console.log(videoref.current)
-       }
-       if(message.type=='newproducer'){
-         const t=transportref.current[0];
-         console.log('thisiissssssssssssssssssssssssssssssss',message,t,transportref.current)
-         sendmessage({
-            type:'consume',
-            rtpParameters:device.rtpCapabilities,
-            transportId:t.id,
-            paused:false,
-            create:message.create,
-            from:"thissssssssss"
-          })
-       }
-    }
-    handletransport()
-    },[socket,message])
+                transportId:t.id,
+                paused:false,
+                create:msg.create,
+                from:"new-producer-handler"
+            })
+        }
+    };
+
+    // This useEffect runs whenever a new message arrives
+    useEffect(()=>{
+        if (message) {
+            handleNewMessage(message);
+        }
+    },[socket, message])
     const handlePlay = () => {
       const videos = document.querySelectorAll("video");
       videos.forEach((video) => {
@@ -132,7 +149,7 @@ const Video=React.memo(({pass})=>{
        ownref.current.srcObject=track;
        console.log("Stream Tracks:", track.getTracks());
        await ownref.current.play();
-        
+
     }
     const renderVideo = (key, stream) => {
       return (
@@ -142,12 +159,12 @@ const Video=React.memo(({pass})=>{
                   if (!el || !stream || el.srcObject === stream) return;
 
                   el.srcObject = stream;
-                  
+
                   // Detailed logging for video track and playback
                   console.log("Stream received:", stream);
                   const tracks = stream.getTracks();
                   console.log("Stream Tracks:", tracks);
-                  
+
                   tracks.forEach(track => {
                       console.log(`Track Details:
                           - Kind: ${track.kind}
@@ -231,7 +248,7 @@ const Video=React.memo(({pass})=>{
      background: "#000",
    }}
  />
-    
+
   ))}
 </div>
 <button onClick={handlePlay} className="bg-red-500">Start Video Playback</button>
@@ -241,3 +258,19 @@ const Video=React.memo(({pass})=>{
 })
 Video.displayName='Video'
 export default Video
+//// Download the helper library from https://www.twilio.com/docs/node/install
+// const twilio = require("twilio"); // Or, for ESM: import twilio from "twilio";
+
+// // Find your Account SID and Auth Token at twilio.com/console
+// // and set the environment variables. See http://twil.io/secure
+// const accountSid = process.env.TWILIO_ACCOUNT_SID;
+// const authToken = process.env.TWILIO_AUTH_TOKEN;
+// const client = twilio(accountSid, authToken);
+
+// async function createToken() {
+//   const token = await client.tokens.create();
+
+//   console.log(token.accountSid);
+// }
+
+// createToken();

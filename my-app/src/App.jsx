@@ -10,6 +10,9 @@ import Login from './components/login.jsx'
 import Home from './components/Home.jsx'
 import Square from './square.jsx'
 import TextCanvas from './ts.jsx'
+import HomePage from './home'
+import FlowWithCanvasNodes from './word.jsx'
+
 function App() {
   const [count, setCount] = useState(0)
 
@@ -17,12 +20,14 @@ function App() {
     <>
      <BrowserRouter>
      <Routes>
-      <Route path='/' element={<Signup/>}></Route>
+      <Route path='/signup' element={<Signup/>}></Route>
+      <Route path='/sign' element={<FlowWithCanvasNodes/>}></Route>
       <Route path='/login' element={<Login/>}></Route>
-      <Route path='canvas' element={<Base/>}></Route>
-     <Route path='/home' element={<Home/>}></Route>
+      <Route path='/log' element={<HomePage/>}></Route>
+     <Route path='/' element={<Home/>}></Route>
      <Route path='/square' element={<Square/>}></Route>
      <Route path='/text' element={<TextCanvas/>}></Route>
+     <Route path='/Base' element={<Base/>}></Route>
     </Routes>
 
     </BrowserRouter>

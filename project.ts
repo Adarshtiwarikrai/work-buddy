@@ -50,10 +50,31 @@ export class Project {
 
         user.socket.on('message', async (message:any)=>{
            const data=JSON.parse(message.toString());
-            if(data.type=='canvas'){
+           console.log(data)
 
-                user.socket.send(JSON.stringify({type:'canvas-back',data:this.can.toBuffer()})
-                )
+            if(data.type=='path'||data.type=='shape'||data.type=='text'){
+           
+           if(data.name=='')
+            return 
+              console.log("name is this ",data.name,data)
+        //const part=this.room.get(data.create)!.peers
+   
+             const arr=this.room.get(data.name)!.peers;
+             console.log("arrar",arr)
+             arr.forEach((person)=>{
+                if(person.socket!=user.socket){
+                   if(data.type=='path'){
+                    person.socket.send(JSON.stringify({type:'pathcreate',data}))
+                   }
+                   if(data.type=='shape'){
+                    person.socket.send(JSON.stringify({type:'shapecreate',shape}))
+                   }
+                   if(data.type=='text'){
+                       person.socket.send(JSON.stringify({type:'textcreate',textpos,text}))
+                   }
+                }
+               
+             })
             }
             if(data.type=='createroom'){
                  await this.createmeeting(data.create,user)
@@ -100,9 +121,10 @@ export class Project {
         //@ts-ignore
         this.room.get(word)!.peers.add(user);
     }
+    //process.env.ANNOUNCED_IP||
     public async createwebrtctransport(router:mediasoup.types.Router,user:User){
          const transport = await router.createWebRtcTransport({
-        listenIps: [{ ip: '0.0.0.0', announcedIp: '127.0.0.1' }],
+        listenIps: [{ ip: '0.0.0.0', announcedIp:  '127.0.0.1'||'192.168.29.148' }],
         enableUdp: true,
         enableTcp: true,
         preferUdp: true,
@@ -134,7 +156,7 @@ export class Project {
      }
      else
      this.transports.set(user,[transport])
-    // console.log(this.transports.get(user).length)
+    //console.log(this.transports.get(user).length)
     }
     public async connectransport(user:User,data){
         const {dtlsParameters,transportId}=data;
@@ -176,6 +198,7 @@ export class Project {
         })
         )
         const part=this.room.get(data.create)!.peers
+        console.log("bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",part,data.create)
         part.forEach((person)=>{
             console.log("bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",person.name)
             person.socket.send(JSON.stringify({
@@ -245,3 +268,7 @@ export class Project {
 //gcloud projects add-iam-policy-binding top-script-448817-a1    --member="serviceAccount:956648231412-compute@developer.gserviceaccount.com"  --role="roles/editor" 
 //gcloud compute instances set-service-account work-buddy2   --zone=us-central1-c  --service-account=956648231412-compute@developer.gserviceaccount.com --scopes=https://www.googleapis.com/auth/cloud-platform
 //gcloud compute firewall-rules create allow-websockets  --allow=tcp:8080  --source-ranges=0.0.0.0/0  --target-tags=websocket-server
+//docker tag adarshtiwari34/image gcr.io/top-script-448817-a1/adarshtiwari34/image
+//docker push gcr.io/top-script-448817-a1/adarshtiwari34/image
+//gcloud run deploy adarshtiwari34-image \
+//--image gcr.io/top-script-448817-a1/adarshtiwari34/image --platform managed --region us-central1 --allow-unauthenticated --port 8080 --set-env-vars=ENV=production
